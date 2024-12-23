@@ -7,8 +7,10 @@ from hyperfast.main_network.configuration import MainNetworkConfig
 
 class HyperNetwork(nn.Module):
 
-    def __init__(self, config: HyperNetworkConfig, main_network_config: MainNetworkConfig):
+    def __init__(self, config: HyperNetworkConfig, main_network_config: MainNetworkConfig, loaded_on: str):
         super().__init__()
+        self.__configuration = config
+        self.loaded_on = loaded_on
         middle_layers = []
         for n in range(config.number_of_layers - 2):
             middle_layers.append(nn.Linear(config.hidden_size, config.hidden_size))
@@ -46,5 +48,10 @@ class HyperNetwork(nn.Module):
     def forward(self, x, y, n_classes):
         pass
 
+    @property
+    def config(self) -> HyperNetworkConfig:
+        return self.__configuration
 
+    # def train(self, x, y, n_classes):
+    #     raise NotImplementedError("Not implemented yet. It is explained inside the \"hyperfast and baselines implementation\" section on the paper")
 
