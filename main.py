@@ -1,26 +1,19 @@
-import torch
-import numpy as np
-from hyperfast import HyperFastClassifier
-from sklearn.metrics import accuracy_score
+from hyperfast.hyper_network.loader import HyperNetworkLoader
+from hyperfast.main_network.configuration import MainNetworkConfig
+from hyperfast.hyper_network.configuration import HyperNetworkConfig
 
-# Load your dataset
-X_train, y_train = np.load("data/hapmap1_X_train.npy"), np.load( "data/hapmap1_y_train.npy")
-X_test, y_test = np.load("data/hapmap1_X_test.npy"), np.load("data/hapmap1_y_test.npy")
+hyper_network_config = HyperNetworkConfig(
+    number_of_dimensions=784,
+    number_of_layers=4,
+    hidden_size=1024,
+)
 
-# Set the device
-# print(torch.cuda.is_available())
-# exit(0)
-# device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-device = "cpu"
-print(f"Allocated: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
-print(f"Cached: {torch.cuda.memory_reserved() / 1024**2:.2f} MB")
+main_network_config = MainNetworkConfig(
+    number_of_layers=3,
+    max_categories=46,
+)
 
-# Initialize HyperFast
-model = HyperFastClassifier(device=device, n_ensemble=1, optimization=None, seed=42)
-
-# Generate a target network and make predictions
-model.fit(X_train, y_train)
-predictions = model.predict(X_test)
-
-accuracy = accuracy_score(y_test, predictions)
-print(f"Accuracy: {accuracy * 100:.2f}%")
+net = HyperNetworkLoader.get_loaded_network(config=hyper_network_config, main_network_config=main_network_config)
+for p in net.parameters():
+    print(p)
+net.forward(None, None, None)

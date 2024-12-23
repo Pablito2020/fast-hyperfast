@@ -6,5 +6,6 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "hyperfast>=1.0.5",
+    "pydantic>=2.10.4",
     "scikit-learn==1.5.2",
 ]
