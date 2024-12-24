@@ -46,6 +46,7 @@ class HyperNetwork(nn.Module):
         self.nn_bias = nn.Parameter(torch.ones(2))
 
     def forward(self, x, y, n_classes):
+        print(n_classes)
         pass
 
     @property

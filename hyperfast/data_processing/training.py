@@ -93,11 +93,11 @@ class TrainingDataProcessor:
         x, y = self._assert_dataset_is_correct(x, y)
 
         if len(x.shape) == 2:
-            self._all_feature_idxs = np.arange(x.shape[1])
+            _all_feature_idxs = np.arange(x.shape[1])
         else:
             raise ValueError("Reshape your data")
 
-        numerical_feature_ids = np.setdiff1d(self._all_feature_idxs, self.config.cat_features)
+        numerical_feature_ids = np.setdiff1d(_all_feature_idxs, self.config.cat_features)
         if len(numerical_feature_ids) > 0:
             num_imputer = SimpleImputer(missing_values=np.nan, strategy="mean")
             num_imputer.fit(x[:, numerical_feature_ids])
