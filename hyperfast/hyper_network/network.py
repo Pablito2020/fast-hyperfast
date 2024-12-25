@@ -53,9 +53,10 @@ class HyperNetwork(nn.Module):
         transformer = FixedSizeTransformer(number_of_dimensions=self.__configuration.number_of_dimensions,
                                            random_feature_nn_size=2 ** 15, clip_data_value=27.6041)
         out = transformer.transform(x)
-        pca_output = transformer.get_pca_output(X=out, y=y, n_classes=n_classes)
+        pca_output = transformer.get_mean_per_class(x=out, y=y, n_classes=n_classes)
         y_onehot = F.one_hot(y, self.__main_network_config.max_categories)
 
+        # TODO: Clean this
         data = torch.cat((pca_output, y_onehot), dim=1)
         main_network = []
         for n in range(self.__main_network_config.number_of_layers - 1):
@@ -74,7 +75,6 @@ class HyperNetwork(nn.Module):
         # Last network layer
         data = torch.cat((out, pca_output, y_onehot), dim=1)
         weights_per_sample = self.__get_main_net_last_weights(data)
-
         weights = []
         last_input_mean = []
         for lab in range(n_classes):
@@ -87,12 +87,12 @@ class HyperNetwork(nn.Module):
             weights.append(w)
             last_input_mean.append(input_mean)
         weights = torch.cat(weights)
-
         last_input_mean = torch.cat(last_input_mean)
         weights[:, :-1] = weights[:, :-1] + last_input_mean
         weights = weights.T
         out, last_linear_layer = self.__forward_linear_layer(out, weights, n_classes)
         main_network.append(last_linear_layer)
+
         return MainNetwork(
             random_features_net=None,
             pca=None,

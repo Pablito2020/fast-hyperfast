@@ -5,8 +5,24 @@ from torch import nn, Tensor
 from hyperfast.utils.cuda import is_torch_pca
 from hyperfast.utils.torch_pca import TorchPCA
 
+DEFAULT_CLIP_DATA_VALUE = 27.6041
+DEFAULT_RANDOM_FEATURE_SIZE =  2**15
 
-class FixedSizeTransformer(nn.Module):
+class RandomFeatures(nn.Module):
+
+    def __init__(self, input_shape: int, random_feature_size: int = DEFAULT_RANDOM_FEATURE_SIZE):
+        super().__init__()
+        rf_linear = nn.Linear(input_shape, random_feature_size, bias=False)
+        nn.init.kaiming_normal_(rf_linear.weight, mode="fan_out", nonlinearity="relu")
+        rf_linear.weight.requires_grad = False
+        self.random_feature = nn.Sequential(rf_linear, nn.ReLU())
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.random_feature(x)
+
+
+
+class FixedSizeTransformer:
 
     def __init__(self, number_of_dimensions: int, random_feature_nn_size: int, clip_data_value: float):
         super().__init__()
@@ -32,16 +48,6 @@ class FixedSizeTransformer(nn.Module):
         else:
             return torch.from_numpy(pca.fit_transform(X.cpu().numpy())).to(X.device)
 
-    def _get_pca_mean_per_class(self, x, y, n_classes) -> Tensor:
-        pca_perclass_mean = []
-        for lab in range(n_classes):
-            if torch.sum((y == lab)) > 0:
-                class_mean = torch.mean(x[y == lab], dim=0, keepdim=True)
-            else:
-                class_mean = torch.mean(x, dim=0, keepdim=True)
-            pca_perclass_mean.append(class_mean)
-        return torch.cat(pca_perclass_mean)
-
     def transform(self, X) -> Tensor:
         """
         Transforms X to a tensor of n_dimensions, that has pca and random features taken into account.
@@ -51,20 +57,31 @@ class FixedSizeTransformer(nn.Module):
         X = self._get_pca(X)
         return torch.clamp(X, -self.clip_data_value, self.clip_data_value)
 
-    def get_pca_output(self, X, y, n_classes) -> Tensor:
-        pca_global_mean = torch.mean(X, axis=0)
-        pca_per_class_mean = self._get_pca_mean_per_class(x=X, y=y, n_classes=n_classes)
+    def _get_mean_per_class(self, x: Tensor, y: Tensor, n_classes: int) -> Tensor:
+        mean_per_class = []
+        for class_num in range(n_classes):
+            if torch.sum((y == class_num)) > 0:
+                class_mean = torch.mean(x[y == class_num], dim=0, keepdim=True)
+            else:
+                class_mean = torch.mean(x, dim=0, keepdim=True)
+            mean_per_class.append(class_mean)
+        return torch.cat(mean_per_class)
+
+
+    def get_mean_per_class(self, x: Tensor, y: Tensor, n_classes: int) -> Tensor:
+        global_mean = torch.mean(input=x, axis=0)
+        mean_per_class = self._get_mean_per_class(x=x, y=y, n_classes=n_classes)
+
+        # TODO: This transformations were living inside the original codebase, are they really necessary?
+        # if mean_per_class.ndim == 1:
+        #     mean_per_class = mean_per_class.unsqueeze(0)
+        # if X.ndim == 1:
+        #     X = X.unsqueeze(0)
 
         pca_concat = []
-        for ii, lab in enumerate(y):
-            if pca_per_class_mean.ndim == 1:
-                pca_per_class_mean = pca_per_class_mean.unsqueeze(0)
-            if X.ndim == 1:
-                X = X.unsqueeze(0)
-
-            lab_index = lab.item() if torch.is_tensor(lab) else lab
-            lab_index = min(lab_index, pca_per_class_mean.size(0) - 1)
-
-            row = torch.cat((X[ii], pca_global_mean, pca_per_class_mean[lab_index]))
+        for current_row, value_to_infer in enumerate(y):
+            class_index = value_to_infer.item() if torch.is_tensor(value_to_infer) else value_to_infer
+            assert class_index <= mean_per_class.size(0) - 1, "Is impossible that the index is bigger than the classes size!"
+            row = torch.cat((x[current_row], global_mean, mean_per_class[class_index]))
             pca_concat.append(row)
         return torch.vstack(pca_concat)

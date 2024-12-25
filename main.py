@@ -22,9 +22,10 @@ def get_phone_ds():
 def get_original_ds():
     X_train, y_train = np.load("data/hapmap1_X_train.npy"), np.load( "data/hapmap1_y_train.npy")
     X_test, y_test = np.load("data/hapmap1_X_test.npy"), np.load("data/hapmap1_y_test.npy")
-    return (X_train, y_train), (X_test, y_test)
+    return X_train, y_train, X_test, y_test
 
 
+# X_train, y_train, X_test, y_test = get_original_ds()
 X_train, y_train = get_phone_ds()
 network = HyperNetworkLoader.get_loaded_network()
 hyper_network = HyperNetworkGenerator(network=network, n_ensemble=1)
