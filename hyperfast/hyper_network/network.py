@@ -5,8 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-from hyperfast.hyper_network.configuration import HyperNetworkConfig
-from hyperfast.hyper_network.data_transform import FixedSizeTransformer
+from hyperfast.hyper_network.configuration import HyperNetworkConfig, DEFAULT_CLIP_DATA_VALUE
+from hyperfast.hyper_network.embedding import RandomFeatures, get_pca, get_mean_per_class
 from hyperfast.main_network.configuration import MainNetworkConfig
 from hyperfast.main_network.network import MainNetwork
 
@@ -50,10 +50,15 @@ class HyperNetwork(nn.Module):
         self.nn_bias = nn.Parameter(torch.ones(2))
 
     def forward(self, x, y, n_classes: int) -> MainNetwork:
-        transformer = FixedSizeTransformer(number_of_dimensions=self.__configuration.number_of_dimensions,
-                                           random_feature_nn_size=2 ** 15, clip_data_value=27.6041)
-        out = transformer.transform(x)
-        pca_output = transformer.get_mean_per_class(x=out, y=y, n_classes=n_classes)
+        x = x.flatten(start_dim=1)
+
+        random_features = RandomFeatures(input_shape=x.shape[1])
+        x = random_features(x)
+
+        x, pca = get_pca(x, number_dimensions=self.__configuration.number_of_dimensions)
+        out = torch.clamp(x, -DEFAULT_CLIP_DATA_VALUE, DEFAULT_CLIP_DATA_VALUE)
+
+        pca_output = get_mean_per_class(x=out, y=y, n_classes=n_classes)
         y_onehot = F.one_hot(y, self.__main_network_config.max_categories)
 
         # TODO: Clean this
@@ -94,8 +99,8 @@ class HyperNetwork(nn.Module):
         main_network.append(last_linear_layer)
 
         return MainNetwork(
-            random_features_net=None,
-            pca=None,
+            random_features_net=random_features,
+            pca=pca,
             main_network_weights=main_network
         )
 

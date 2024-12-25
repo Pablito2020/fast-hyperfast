@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from typing import List
+
 import numpy as np
 import pandas as pd
 import torch
 
 from hyperfast.data_processing.training import TrainingDataProcessor
 from hyperfast.hyper_network.network import HyperNetwork
-from hyperfast.main_network.model import MainNetworkModel
+from hyperfast.main_network.network import MainNetwork
 from hyperfast.utils.cuda import get_device
 
 
@@ -19,7 +21,7 @@ class HyperNetworkGenerator:
         self.configuration = network.config
 
     def generate_main_network_from_dataset(self, x: np.ndarray | pd.DataFrame,
-                                           y: np.ndarray | pd.Series) -> MainNetworkModel:
+                                           y: np.ndarray | pd.Series) -> List[MainNetwork]:
         """
         Generates a main model for the given data.
 
@@ -36,4 +38,4 @@ class HyperNetworkGenerator:
             _x, _y = _x.to(device), _y.to(device)
             with torch.no_grad():
                 models.append(self._model(_x, _y, n_classes))
-        return MainNetworkModel(models=models)
+        return models
