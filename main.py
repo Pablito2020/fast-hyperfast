@@ -29,6 +29,5 @@ def get_original_ds():
 X_train, y_train = get_phone_ds()
 network = HyperNetworkLoader.get_loaded_network()
 hyper_network = HyperNetworkGenerator(network=network, n_ensemble=1)
-main_networks = hyper_network.generate_main_network_from_dataset(X_train, y_train)
-assert len(main_networks) == 1, "We should generate 1 if we're ensembling one..."
-print(main_networks[0])
+classifier = hyper_network.generate_classifier_for_dataset(X_train, y_train)
+print(classifier.networks)
