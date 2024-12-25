@@ -12,10 +12,5 @@ DEFAULT_HYPER_NETWORK_CONFIGURATION = HyperNetworkConfig(
     hidden_size=1024,
 )
 
-class LoaderConfig(BaseModel):
-    model_path: str = "hyperfast.ckpt"
-    model_url: HttpUrl = "https://figshare.com/ndownloader/files/43484094"
-
-
 DEFAULT_CLIP_DATA_VALUE = 27.6041
 DEFAULT_RANDOM_FEATURE_SIZE = 2 ** 15

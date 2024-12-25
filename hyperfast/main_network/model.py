@@ -4,9 +4,13 @@ from typing import List
 import numpy as np
 import torch
 import torch.nn.functional as F
+from torch import nn, optim
+from torch.utils.data import TensorDataset, DataLoader
+from tqdm import tqdm
 
 from hyperfast.main_network.network import MainNetwork
 from hyperfast.standardize_data.inference import InferenceStandardizer
+from hyperfast.standardize_data.training import TrainingDataProcessor
 from hyperfast.utils.cuda import get_device
 
 
@@ -19,24 +23,18 @@ class MainNetworkClassifier:
 
 
     def _predict(self, x) -> np.ndarray:
-        X = self.standardizer.preprocess_inference_data(x)
-        X_dataset = torch.utils.data.TensorDataset(X)
-        X_loader = torch.utils.data.DataLoader(X_dataset, batch_size=self.batch_size, shuffle=False)
+        preprocessed_x = self.standardizer.preprocess_inference_data(x)
+        x_dataset = torch.utils.data.TensorDataset(preprocessed_x)
+        x_loader = torch.utils.data.DataLoader(x_dataset, batch_size=self.batch_size, shuffle=False)
         responses = []
-        for X_batch in X_loader:
-            X_ = X_batch[0].to(get_device())
+        for x_batch in x_loader:
+            x_ = x_batch[0].to(get_device())
             with torch.no_grad():
                 networks_result = []
                 for network in self.networks:
-                    # TODO: This is important!
-                    # X_transformed = transform_data_for_main_network(
-                    #     X=X_, cfg=self._cfg, rf=rf, pca=pca
-                    # )
-                    x_transformed = X_
-                    logit_outputs = network.forward(x_transformed)
+                    logit_outputs = network.forward(x_)
                     predicted = F.softmax(logit_outputs, dim=1)
                     networks_result.append(predicted)
-
                 networks_result = torch.stack(networks_result)
                 networks_result = torch.mean(networks_result, axis=0)
                 networks_result = networks_result.cpu().numpy()
@@ -47,3 +45,36 @@ class MainNetworkClassifier:
         outputs = self._predict(x)
         return self.classes[np.argmax(outputs, axis=1)]
 
+    def fine_tune_networks(self, x, y, optimize_steps: int, learning_rate: float = 0.0001):
+        tune_standardizer = TrainingDataProcessor()
+        res = tune_standardizer.sample(x, y)
+        pre_processed_x, pre_processed_y = res.data
+        for network_index in range(len(self.networks)):
+            self.fine_tune_network_index(pre_processed_x, pre_processed_y, optimize_steps, network_index, learning_rate)
+
+    def fine_tune_network_index(self, x, y, optimize_steps: int, index: int, learning_rate: float):
+        assert index < len(self.networks), "You can't optimize a network that doesn't exist!"
+        dataset = TensorDataset(x, y)
+        dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        criterion = nn.CrossEntropyLoss()
+        network = self.networks[index]
+        optimizer = optim.AdamW(network.parameters(), lr=learning_rate)
+        device = get_device()
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="min", factor=0.1, patience=10
+        )
+        for step in tqdm(range(optimize_steps), desc=f"Fine Tunning Network {index + 1} 📖"):
+            for inputs, targets in dataloader:
+                inputs, targets = inputs.to(device), targets.to(device)
+                optimizer.zero_grad()
+                outputs = network(inputs, targets)
+                loss = criterion(outputs, targets)
+                loss.backward()
+                optimizer.step()
+                print(f"[Fine Tune (Network {index + 1})] Step: [{step+1}/{optimize_steps}], Loss: {loss.item()}")
+
+            if scheduler is not None:
+                if isinstance(scheduler, optim.lr_scheduler.ReduceLROnPlateau):
+                    scheduler.step(loss.item())
+                else:
+                    scheduler.step()

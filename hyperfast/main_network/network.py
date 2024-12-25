@@ -43,15 +43,12 @@ class MainNetwork(nn.Module):
         x = x - self.pca_mean
         x = self.pca_components(x)
         x = torch.clamp(x, -DEFAULT_CLIP_DATA_VALUE, DEFAULT_CLIP_DATA_VALUE)
-
         for n, layer in enumerate(self.layers):
             if n % 2 == 0:
                 residual_connection = x
-
             x = layer(x)
             if n % 2 == 1 and n < len(self.layers) - 1:
                 x = x + residual_connection
-
             if n < len(self.layers) - 1:
                 x = F.relu(x)
                 if n == len(self.layers) - 2:

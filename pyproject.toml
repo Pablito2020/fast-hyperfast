@@ -8,5 +8,6 @@ dependencies = [
     "hyperfast>=1.0.5",
     "pydantic>=2.10.4",
     "scikit-learn==1.5.2",
+    "tqdm>=4.67.1",
     "xlrd>=2.0.1",
 ]
