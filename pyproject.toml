@@ -1,13 +1,17 @@
 [project]
-name = "testing"
+name = "fast_hyperfast"
 version = "0.1.0"
-description = "Add your description here"
+description = "HyperFast (https://github.com/AI-sandbox/HyperFast) but customizable (and in some cases faster too!)"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "hyperfast>=1.0.5",
     "pydantic>=2.10.4",
     "scikit-learn==1.5.2",
     "tqdm>=4.67.1",
     "xlrd>=2.0.1",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."] 
+include = ["hyperfast"]
+exclude = [] 
