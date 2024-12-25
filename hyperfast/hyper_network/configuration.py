@@ -1,5 +1,3 @@
-from typing import Literal
-
 from pydantic import BaseModel, HttpUrl
 
 
@@ -15,6 +13,5 @@ DEFAULT_HYPER_NETWORK_CONFIGURATION = HyperNetworkConfig(
 )
 
 class LoaderConfig(BaseModel):
-    load_device: Literal["cpu", "cuda:0"] = "cpu"
     model_path: str = "hyperfast.ckpt"
     model_url: HttpUrl = "https://figshare.com/ndownloader/files/43484094"

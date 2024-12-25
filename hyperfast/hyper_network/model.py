@@ -7,6 +7,7 @@ import torch
 from hyperfast.data_processing.training import TrainingDataProcessor
 from hyperfast.hyper_network.network import HyperNetwork
 from hyperfast.main_network.model import MainNetworkModel
+from hyperfast.utils.cuda import get_device
 
 
 class HyperNetworkGenerator:
@@ -16,7 +17,6 @@ class HyperNetworkGenerator:
         self.processor = processor
         self._model = network
         self.configuration = network.config
-        self.device = network.loaded_on
 
     def generate_main_network_from_dataset(self, x: np.ndarray | pd.DataFrame,
                                            y: np.ndarray | pd.Series) -> MainNetworkModel:
@@ -29,10 +29,11 @@ class HyperNetworkGenerator:
         """
         processed_data = self.processor.sample(x, y)
         _x, _y = processed_data.data
-        n_classes = processed_data.misc.classes
+        n_classes = len(processed_data.misc.classes)
         models = []
+        device = get_device()
         for n in range(self.n_ensemble):
-            _x, _y = _x.to(self.device), _y.to(self.device)
+            _x, _y = _x.to(device), _y.to(device)
             with torch.no_grad():
                 models.append(self._model(_x, _y, n_classes))
         return MainNetworkModel(models=models)

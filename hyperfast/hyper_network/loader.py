@@ -6,6 +6,7 @@ import torch
 from hyperfast.hyper_network.configuration import HyperNetworkConfig, LoaderConfig, DEFAULT_HYPER_NETWORK_CONFIGURATION
 from hyperfast.hyper_network.network import HyperNetwork
 from hyperfast.main_network.configuration import MainNetworkConfig, DEFAULT_MAIN_NETWORK_CONFIGURATION
+from hyperfast.utils.cuda import get_device
 
 
 @dataclass(frozen=True)
@@ -17,8 +18,7 @@ class HyperNetworkLoader:
             raise NotImplementedError("TODO: Download the model and show % bar")
 
     def load_network_from(self, config: HyperNetworkConfig, main_network_config: MainNetworkConfig) -> HyperNetwork:
-        network = HyperNetwork(config=config, main_network_config=main_network_config,
-                               loaded_on=self.configuration.load_device)
+        network = HyperNetwork(config=config, main_network_config=main_network_config)
         return self.__load_model_weights(network)
 
     @staticmethod
@@ -28,12 +28,12 @@ class HyperNetworkLoader:
         return loader.load_network_from(config, main_network_config)
 
     def __load_model_weights(self, model: HyperNetwork) -> HyperNetwork:
-        print(f"Loading model from {self.configuration.model_path} on {self.configuration.load_device} device....",
+        device = get_device()
+        print(f"Loading model from {self.configuration.model_path} on device: {device}",
               flush=True)
         model.load_state_dict(
-            torch.load(self.configuration.model_path, map_location=torch.device(self.configuration.load_device),
-                       weights_only=True))
+            torch.load(self.configuration.model_path, map_location=torch.device(device),weights_only=True)
+        )
         model.eval()
-        print(f"Loaded model from {self.configuration.model_path} on {self.configuration.load_device} device!",
-              flush=True)
+        print(f"Loaded model from {self.configuration.model_path} on {device} device!", flush=True)
         return model
