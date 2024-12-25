@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import List
 
@@ -20,7 +22,6 @@ class MainNetworkClassifier:
     networks: List[MainNetwork]
     classes: np.ndarray
     batch_size: int
-
 
     def _predict(self, x) -> np.ndarray:
         preprocessed_x = self.standardizer.preprocess_inference_data(x)
@@ -71,10 +72,32 @@ class MainNetworkClassifier:
                 loss = criterion(outputs, targets)
                 loss.backward()
                 optimizer.step()
-                print(f"[Fine Tune (Network {index + 1})] Step: [{step+1}/{optimize_steps}], Loss: {loss.item()}")
+                print(f"[Fine Tune (Network {index + 1})] Step: [{step + 1}/{optimize_steps}], Loss: {loss.item()}")
 
             if scheduler is not None:
                 if isinstance(scheduler, optim.lr_scheduler.ReduceLROnPlateau):
                     scheduler.step(loss.item())
                 else:
                     scheduler.step()
+
+    def save_model(self, path: str):
+        torch.save(self.networks, f"{path}/main_networks.pth")
+        np.save(f'{path}/classes.npy', self.classes)
+        print(f"Current batch size is: {self.batch_size}")
+
+    @staticmethod
+    def load_from_pre_trained(x, y, path: str, batch_size: int) -> MainNetworkClassifier:
+        t = TrainingDataProcessor()
+        device = get_device()
+        res = t.sample(x, y)
+        inference_standardizer = InferenceStandardizer(data=res)
+        print(f"Loading Main Model on device: {device}... ⏰", flush=True)
+        networks = torch.load(f"{path}/main_networks.pth", map_location=torch.device(device))
+        classes = np.load(f'{path}/classes.npy')
+        print(f"Loaded Main Model on device: {device} successfully! 🚀", flush=True)
+        return MainNetworkClassifier(
+            standardizer=inference_standardizer,
+            networks=networks,
+            classes=classes,
+            batch_size=batch_size
+        )

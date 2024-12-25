@@ -9,6 +9,7 @@ from hyperfast.hyper_network.configuration import HyperNetworkConfig, DEFAULT_CL
 from hyperfast.hyper_network.embedding import RandomFeatures, get_pca, get_mean_per_class
 from hyperfast.main_network.configuration import MainNetworkConfig
 from hyperfast.main_network.network import MainNetwork
+from hyperfast.utils.cuda import get_device, is_cuda
 
 
 class HyperNetwork(nn.Module):
@@ -53,6 +54,8 @@ class HyperNetwork(nn.Module):
         x = x.flatten(start_dim=1)
 
         random_features = RandomFeatures(input_shape=x.shape[1])
+        if is_cuda():
+            random_features = random_features.cuda()
         x = random_features(x)
 
         x, pca = get_pca(x, number_dimensions=self.__configuration.number_of_dimensions)
@@ -108,8 +111,8 @@ class HyperNetwork(nn.Module):
         """
         Get the weights for the N layer of the main network
         """
-        hyper_network = self.hypernetworks[n]
-        converter_to_weights = self.hn_emb_to_weights[n]
+        hyper_network = self.hypernetworks[n].to(get_device())
+        converter_to_weights = self.hn_emb_to_weights[n].to(get_device())
         emb = hyper_network(data)
         global_emb = torch.mean(emb, dim=0)
         return converter_to_weights(global_emb)
@@ -118,7 +121,7 @@ class HyperNetwork(nn.Module):
         """
         Get the weights for the last layer of the main network
         """
-        last_hyper_network = self.hypernetworks[-1]
+        last_hyper_network = self.hypernetworks[-1].to(get_device())
         return last_hyper_network(data)
 
     def __forward_linear_layer(self, x, weights, number_of_dimensions) -> Tuple[any, Tuple[Tensor, Tensor]]:

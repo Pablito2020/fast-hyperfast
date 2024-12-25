@@ -178,3 +178,4 @@ wheels/
 
 # Weights of the hyper_network
 hyperfast.ckpt
+models
