@@ -17,6 +17,16 @@ class MainNetwork(nn.Module):
         super().__init__()
         self.random_features_net = random_features_net
         self.pca_mean = (nn.Parameter(pca.mean_) if is_torch_pca() else nn.Parameter(torch.from_numpy(pca.mean_)))
+        self.input_features, self.output_features = pca.components_.shape
+        self.pca_components = nn.Linear(
+            self.input_features, self.output_features, bias=False
+        )
+        self.pca_components.weight = (
+            nn.Parameter(pca.components_)
+            if is_torch_pca()
+            else nn.Parameter(torch.from_numpy(pca.components_))
+        )
+
         self.layers = nn.ModuleList()
         for matrix, bias in main_network_weights:
             linear_layer = nn.Linear(matrix.shape[0], matrix.shape[1])

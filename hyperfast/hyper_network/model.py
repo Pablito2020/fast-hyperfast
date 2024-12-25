@@ -7,6 +7,7 @@ import pandas as pd
 import torch
 
 from hyperfast.main_network.model import MainNetworkClassifier
+from hyperfast.standardize_data.inference import InferenceStandardizer
 from hyperfast.standardize_data.training import TrainingDataProcessor
 from hyperfast.hyper_network.network import HyperNetwork
 from hyperfast.utils.cuda import get_device
@@ -36,10 +37,12 @@ class HyperNetworkGenerator:
         device = get_device()
         for n in range(self.n_ensemble):
             _x, _y = _x.to(device), _y.to(device)
-            with torch.no_grad():
-                networks.append(self._model(_x, _y, n_classes))
+            with torch.no_grad(): # Important! Since we're not testing, we're creating the "final" weights
+                network = self._model(_x, _y, n_classes)
+                networks.append(network)
         return MainNetworkClassifier(
             networks=networks,
             classes=processed_data.misc.classes,
-            standardizer=None
+            standardizer=InferenceStandardizer(data=processed_data),
+            batch_size=self.processor.config.batch_size
         )

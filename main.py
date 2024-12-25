@@ -1,4 +1,6 @@
 import numpy as np
+from sklearn.metrics import accuracy_score
+
 from hyperfast.hyper_network.loader import HyperNetworkLoader
 from hyperfast.hyper_network.model import HyperNetworkGenerator
 from hyperfast.utils.seed import seed_everything
@@ -25,9 +27,11 @@ def get_original_ds():
     return X_train, y_train, X_test, y_test
 
 
-# X_train, y_train, X_test, y_test = get_original_ds()
-X_train, y_train = get_phone_ds()
+X_train, y_train, X_test, y_test = get_original_ds()
+# X_train, y_train = get_phone_ds()
 network = HyperNetworkLoader.get_loaded_network()
 hyper_network = HyperNetworkGenerator(network=network, n_ensemble=1)
 classifier = hyper_network.generate_classifier_for_dataset(X_train, y_train)
-print(classifier.networks)
+predictions = classifier.predict(X_test)
+accuracy = accuracy_score(y_test, predictions)
+print(f"Accuracy: {accuracy * 100:.2f}%")

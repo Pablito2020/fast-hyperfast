@@ -15,11 +15,11 @@ class MainNetworkClassifier:
     standardizer: InferenceStandardizer
     networks: List[MainNetwork]
     classes: np.ndarray
+    batch_size: int
 
 
     def _predict(self, x) -> np.ndarray:
-        # TODO: Here call the standarizer with X!
-        X = x
+        X = self.standardizer.preprocess_inference_data(x)
         X_dataset = torch.utils.data.TensorDataset(X)
         X_loader = torch.utils.data.DataLoader(X_dataset, batch_size=self.batch_size, shuffle=False)
         responses = []

@@ -42,6 +42,7 @@ class ProcessTrainingDataInformation(BaseModel):
     the "transformers" => instances of objects that will allow us to transform the inference data.
     """
     classes: np.ndarray
+    categorical_features: List[int] = []
     numerical_feature_ids: np.ndarray
     transformers: Transformers
 
@@ -122,9 +123,9 @@ class TrainingDataProcessor:
 
         # Return what we've done
         transformers = Transformers(one_hot_encoder=one_hot_encoder, scaler=scaler, numerical_imputer=num_imputer,
-            categorical_imputer=cat_imputer, )
+                                    categorical_imputer=cat_imputer, )
         info = ProcessTrainingDataInformation(classes=classes, numerical_feature_ids=numerical_feature_ids,
-                                              transformers=transformers)
+                                              categorical_features=self.config.cat_features, transformers=transformers)
         result = ProcessorTrainingDataResult(
             data=(torch.tensor(x, dtype=torch.float), torch.tensor(y, dtype=torch.long)), misc=info)
         return result
