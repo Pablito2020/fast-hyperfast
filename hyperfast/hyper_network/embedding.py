@@ -9,8 +9,9 @@ from hyperfast.utils.cuda import is_torch_pca
 
 
 class RandomFeatures(nn.Module):
-
-    def __init__(self, input_shape: int, random_feature_size: int = DEFAULT_RANDOM_FEATURE_SIZE):
+    def __init__(
+        self, input_shape: int, random_feature_size: int = DEFAULT_RANDOM_FEATURE_SIZE
+    ):
         super().__init__()
         rf_linear = nn.Linear(input_shape, random_feature_size, bias=False)
         nn.init.kaiming_normal_(rf_linear.weight, mode="fan_out", nonlinearity="relu")
@@ -91,7 +92,11 @@ class TorchPCA:
 
 
 def get_pca(X: Tensor, number_dimensions: int) -> Tuple[Tensor, any]:
-    pca = TorchPCA(n_components=number_dimensions) if is_torch_pca() else PCA(n_components=number_dimensions)
+    pca = (
+        TorchPCA(n_components=number_dimensions)
+        if is_torch_pca()
+        else PCA(n_components=number_dimensions)
+    )
     if is_torch_pca():
         res = pca.fit_transform(X)
     else:
@@ -121,9 +126,12 @@ def get_mean_per_class(x: Tensor, y: Tensor, n_classes: int) -> Tensor:
     #     X = X.unsqueeze(0)
     pca_concat = []
     for current_row, value_to_infer in enumerate(y):
-        class_index = value_to_infer.item() if torch.is_tensor(value_to_infer) else value_to_infer
-        assert class_index <= mean_per_class.size(
-            0) - 1, "Is impossible that the index is bigger than the classes size!"
+        class_index = (
+            value_to_infer.item() if torch.is_tensor(value_to_infer) else value_to_infer
+        )
+        assert (
+            class_index <= mean_per_class.size(0) - 1
+        ), "Is impossible that the index is bigger than the classes size!"
         row = torch.cat((x[current_row], global_mean, mean_per_class[class_index]))
         pca_concat.append(row)
     return torch.vstack(pca_concat)

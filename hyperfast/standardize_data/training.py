@@ -30,6 +30,7 @@ class Transformers:
     Transformers that we initialize with the test data. They will also allow us
     to transform the inference data!
     """
+
     one_hot_encoder: ColumnTransformer
     scaler: StandardScaler
     numerical_imputer: SimpleImputer | None = None
@@ -41,6 +42,7 @@ class ProcessTrainingDataInformation(BaseModel):
     Returns information about the dataset. Which classes it has, the selected_features, and
     the "transformers" => instances of objects that will allow us to transform the inference data.
     """
+
     classes: np.ndarray
     categorical_features: List[int] = []
     numerical_feature_ids: np.ndarray
@@ -68,7 +70,9 @@ class TrainingDataProcessor:
     config: TrainingDataConfig = field(default_factory=TrainingDataConfig)
 
     def _assert_dataset_is_correct(self, x: Data, y: Data) -> Tuple[Data, Data]:
-        if not isinstance(x, (np.ndarray, pd.DataFrame)) and not isinstance(y, (np.ndarray, pd.Series)):
+        if not isinstance(x, (np.ndarray, pd.DataFrame)) and not isinstance(
+            y, (np.ndarray, pd.Series)
+        ):
             x, y = check_X_y(x, y)
         if not isinstance(x, (np.ndarray, pd.DataFrame)):
             x = check_array(x)
@@ -76,21 +80,38 @@ class TrainingDataProcessor:
             y = np.array(y)
         return np.array(x).copy(), np.array(y).copy()
 
-    def _preprocess_categorical_features(self, x: Data) -> Tuple[
-        np.ndarray | pd.DataFrame, SimpleImputer, ColumnTransformer,]:
+    def _preprocess_categorical_features(
+        self, x: Data
+    ) -> Tuple[
+        np.ndarray | pd.DataFrame,
+        SimpleImputer,
+        ColumnTransformer,
+    ]:
         cat_imputer = SimpleImputer(missing_values=np.nan, strategy="most_frequent")
         cat_imputer.fit(x[:, self.config.cat_features])
-        x[:, self.config.cat_features] = cat_imputer.transform(x[:, self.config.cat_features])
+        x[:, self.config.cat_features] = cat_imputer.transform(
+            x[:, self.config.cat_features]
+        )
         x = pd.DataFrame(x)
-        one_hot_encoder = ColumnTransformer(transformers=[
-            ("cat", OneHotEncoder(sparse_output=False, handle_unknown="ignore"), self.config.cat_features)],
-            remainder="passthrough", )
+        one_hot_encoder = ColumnTransformer(
+            transformers=[
+                (
+                    "cat",
+                    OneHotEncoder(sparse_output=False, handle_unknown="ignore"),
+                    self.config.cat_features,
+                )
+            ],
+            remainder="passthrough",
+        )
         one_hot_encoder.fit(x)
         x = one_hot_encoder.transform(x)
         return x, cat_imputer, one_hot_encoder
 
-    def _preprocess_fitting_data(self, x: np.ndarray | pd.DataFrame,
-                                 y: np.ndarray | pd.Series, ) -> ProcessorTrainingDataResult:
+    def _preprocess_fitting_data(
+        self,
+        x: np.ndarray | pd.DataFrame,
+        y: np.ndarray | pd.Series,
+    ) -> ProcessorTrainingDataResult:
         x, y = self._assert_dataset_is_correct(x, y)
 
         if len(x.shape) == 2:
@@ -98,11 +119,15 @@ class TrainingDataProcessor:
         else:
             raise ValueError("Reshape your data")
 
-        numerical_feature_ids = np.setdiff1d(_all_feature_idxs, self.config.cat_features)
+        numerical_feature_ids = np.setdiff1d(
+            _all_feature_idxs, self.config.cat_features
+        )
         if len(numerical_feature_ids) > 0:
             num_imputer = SimpleImputer(missing_values=np.nan, strategy="mean")
             num_imputer.fit(x[:, numerical_feature_ids])
-            x[:, numerical_feature_ids] = num_imputer.transform(x[:, numerical_feature_ids])
+            x[:, numerical_feature_ids] = num_imputer.transform(
+                x[:, numerical_feature_ids]
+            )
         else:
             num_imputer = None
 
@@ -122,20 +147,37 @@ class TrainingDataProcessor:
         classes, y = np.unique(y, return_inverse=True)
 
         # Return what we've done
-        transformers = Transformers(one_hot_encoder=one_hot_encoder, scaler=scaler, numerical_imputer=num_imputer,
-                                    categorical_imputer=cat_imputer, )
-        info = ProcessTrainingDataInformation(classes=classes, numerical_feature_ids=numerical_feature_ids,
-                                              categorical_features=self.config.cat_features, transformers=transformers)
+        transformers = Transformers(
+            one_hot_encoder=one_hot_encoder,
+            scaler=scaler,
+            numerical_imputer=num_imputer,
+            categorical_imputer=cat_imputer,
+        )
+        info = ProcessTrainingDataInformation(
+            classes=classes,
+            numerical_feature_ids=numerical_feature_ids,
+            categorical_features=self.config.cat_features,
+            transformers=transformers,
+        )
         result = ProcessorTrainingDataResult(
-            data=(torch.tensor(x, dtype=torch.float), torch.tensor(y, dtype=torch.long)), misc=info)
+            data=(
+                torch.tensor(x, dtype=torch.float),
+                torch.tensor(y, dtype=torch.long),
+            ),
+            misc=info,
+        )
         return result
 
-    def _sample_data(self, X: Tensor, y: Tensor) -> Tuple[Tuple[Tensor, Tensor], List[Tensor]]:
+    def _sample_data(
+        self, X: Tensor, y: Tensor
+    ) -> Tuple[Tuple[Tensor, Tensor], List[Tensor]]:
         selected_features = []
         if self.config.feature_bagging:
             print("Performing feature bagging")
             stds = torch.std(X, dim=0)
-            feature_idxs = torch.multinomial(stds, self.config.feature_bagging_size, replacement=False)
+            feature_idxs = torch.multinomial(
+                stds, self.config.feature_bagging_size, replacement=False
+            )
             selected_features.append(feature_idxs)
             X = X[:, feature_idxs]
 
@@ -148,7 +190,9 @@ class TrainingDataProcessor:
             for cls in classes:
                 cls_indices = (y == cls).nonzero(as_tuple=True)[0]
                 n_samples = min(samples_per_class, len(cls_indices))
-                cls_sampled_indices = cls_indices[torch.randperm(len(cls_indices))[:n_samples]]
+                cls_sampled_indices = cls_indices[
+                    torch.randperm(len(cls_indices))[:n_samples]
+                ]
                 sampled_indices.append(cls_sampled_indices)
 
             sampled_indices = torch.cat(sampled_indices)
@@ -167,4 +211,6 @@ class TrainingDataProcessor:
         res = self._preprocess_fitting_data(x, y)
         x, y = res.data
         result, selected_features = self._sample_data(x, y)
-        return res.model_copy(update={'data': result, 'selected_features': selected_features})
+        return res.model_copy(
+            update={"data": result, "selected_features": selected_features}
+        )

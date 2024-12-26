@@ -179,3 +179,5 @@ wheels/
 # Weights of the hyper_network
 hyperfast.ckpt
 models
+.direnv
+.pre-commit-config.yaml

@@ -28,7 +28,9 @@ class MainNetworkClassifier:
 
     def _predict(self, x) -> np.ndarray:
         x_dataset = torch.utils.data.TensorDataset(x)
-        x_loader = torch.utils.data.DataLoader(x_dataset, batch_size=self.batch_size, shuffle=False)
+        x_loader = torch.utils.data.DataLoader(
+            x_dataset, batch_size=self.batch_size, shuffle=False
+        )
         responses = []
         for x_batch in x_loader:
             x_ = x_batch[0].to(self.device)
@@ -49,15 +51,27 @@ class MainNetworkClassifier:
         outputs = self._predict(pre_processed_x)
         return self.classes[np.argmax(outputs, axis=1)]
 
-    def fine_tune_networks(self, x, y, optimize_steps: int, learning_rate: float = 0.0001):
+    def fine_tune_networks(
+        self, x, y, optimize_steps: int, learning_rate: float = 0.0001
+    ):
         tune_standardizer = TrainingDataProcessor()
         res = tune_standardizer.sample(x, y)
         pre_processed_x, pre_processed_y = res.data
         for network_index in range(len(self.networks)):
-            self.fine_tune_network_index(pre_processed_x, pre_processed_y, optimize_steps, network_index, learning_rate)
+            self.fine_tune_network_index(
+                pre_processed_x,
+                pre_processed_y,
+                optimize_steps,
+                network_index,
+                learning_rate,
+            )
 
-    def fine_tune_network_index(self, x, y, optimize_steps: int, index: int, learning_rate: float):
-        assert index < len(self.networks), "You can't optimize a network that doesn't exist!"
+    def fine_tune_network_index(
+        self, x, y, optimize_steps: int, index: int, learning_rate: float
+    ):
+        assert index < len(
+            self.networks
+        ), "You can't optimize a network that doesn't exist!"
         dataset = TensorDataset(x, y)
         dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
         criterion = nn.CrossEntropyLoss()
@@ -66,7 +80,9 @@ class MainNetworkClassifier:
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode="min", factor=0.1, patience=10
         )
-        for step in tqdm(range(optimize_steps), desc=f"Fine Tunning Network {index + 1} 📖"):
+        for step in tqdm(
+            range(optimize_steps), desc=f"Fine Tunning Network {index + 1} 📖"
+        ):
             for inputs, targets in dataloader:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
                 optimizer.zero_grad()
@@ -74,7 +90,9 @@ class MainNetworkClassifier:
                 loss = criterion(outputs, targets)
                 loss.backward()
                 optimizer.step()
-                print(f"[Fine Tune (Network {index + 1})] Step: [{step + 1}/{optimize_steps}], Loss: {loss.item()}")
+                print(
+                    f"[Fine Tune (Network {index + 1})] Step: [{step + 1}/{optimize_steps}], Loss: {loss.item()}"
+                )
             scheduler.step(metrics=loss.item())
 
     def save_model(self, path: str, device: Literal["cuda", "cpu"]):
@@ -82,7 +100,9 @@ class MainNetworkClassifier:
         # This will allows us to re-enable frozen=True on the dataclass
         # https://docs.python.org/3/library/copy.html#copy.replace
         classifier = copy.deepcopy(self)
-        new_networks = [net.cpu() if device == "cpu" else net.cuda() for net in classifier.networks]
+        new_networks = [
+            net.cpu() if device == "cpu" else net.cuda() for net in classifier.networks
+        ]
         classifier.device = device
         classifier.networks = new_networks
         joblib.dump(classifier, path)

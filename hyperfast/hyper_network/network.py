@@ -7,16 +7,24 @@ import torch.nn.functional as F
 from torch import Tensor
 from tqdm import tqdm
 
-from hyperfast.hyper_network.configuration import HyperNetworkConfig, DEFAULT_CLIP_DATA_VALUE
-from hyperfast.hyper_network.embedding import RandomFeatures, get_pca, get_mean_per_class
+from hyperfast.hyper_network.configuration import (
+    HyperNetworkConfig,
+    DEFAULT_CLIP_DATA_VALUE,
+)
+from hyperfast.hyper_network.embedding import (
+    RandomFeatures,
+    get_pca,
+    get_mean_per_class,
+)
 from hyperfast.main_network.configuration import MainNetworkConfig
 from hyperfast.main_network.network import MainNetwork
 from hyperfast.utils.cuda import get_device, is_cuda
 
 
 class HyperNetwork(nn.Module):
-
-    def __init__(self, config: HyperNetworkConfig, main_network_config: MainNetworkConfig):
+    def __init__(
+        self, config: HyperNetworkConfig, main_network_config: MainNetworkConfig
+    ):
         super().__init__()
         self.__configuration = config
         self.__main_network_config = main_network_config
@@ -24,21 +32,32 @@ class HyperNetwork(nn.Module):
         for n in range(config.number_of_layers - 2):
             middle_layers.append(nn.Linear(config.hidden_size, config.hidden_size))
             middle_layers.append(nn.ReLU())
-        self.number_input_features = config.number_of_dimensions + main_network_config.max_categories
+        self.number_input_features = (
+            config.number_of_dimensions + main_network_config.max_categories
+        )
 
         self.hypernetworks = nn.ModuleList()
         self.hn_emb_to_weights = nn.ModuleList()
 
         for n in range(main_network_config.number_of_layers - 1):
             if n > 0:
-                self.number_input_features = config.number_of_dimensions * 2 + main_network_config.max_categories
-            num_input_features_hn = self.number_input_features + config.number_of_dimensions * 2
+                self.number_input_features = (
+                    config.number_of_dimensions * 2 + main_network_config.max_categories
+                )
+            num_input_features_hn = (
+                self.number_input_features + config.number_of_dimensions * 2
+            )
 
-            hn_layers = [nn.Linear(num_input_features_hn, config.hidden_size), nn.ReLU()]
+            hn_layers = [
+                nn.Linear(num_input_features_hn, config.hidden_size),
+                nn.ReLU(),
+            ]
             hn_layers = hn_layers + middle_layers
 
             self.hypernetworks.append(nn.Sequential(*hn_layers))
-            output_size_hn = (config.number_of_dimensions + 1) * config.number_of_dimensions
+            output_size_hn = (
+                config.number_of_dimensions + 1
+            ) * config.number_of_dimensions
             self.hn_emb_to_weights.append(nn.Linear(config.hidden_size, output_size_hn))
 
         hn_layers = []
@@ -73,7 +92,9 @@ class HyperNetwork(nn.Module):
             if n % 2 == 0:
                 residual_connection = out
             weights = self.__get_main_weights(data=data, n=n)
-            out, main_linear_layer = self.__forward_linear_layer(out, weights, self.__configuration.number_of_dimensions)
+            out, main_linear_layer = self.__forward_linear_layer(
+                out, weights, self.__configuration.number_of_dimensions
+            )
             if n % 2 == 0:
                 out = F.relu(out)
             else:
@@ -106,7 +127,7 @@ class HyperNetwork(nn.Module):
         return MainNetwork(
             random_features_net=random_features,
             pca=pca,
-            main_network_weights=main_network
+            main_network_weights=main_network,
         )
 
     def __get_main_weights(self, data, n: int) -> Tensor:
@@ -126,7 +147,9 @@ class HyperNetwork(nn.Module):
         last_hyper_network = self.hypernetworks[-1].to(get_device())
         return last_hyper_network(data)
 
-    def __forward_linear_layer(self, x, weights, number_of_dimensions) -> Tuple[any, Tuple[Tensor, Tensor]]:
+    def __forward_linear_layer(
+        self, x, weights, number_of_dimensions
+    ) -> Tuple[any, Tuple[Tensor, Tensor]]:
         """
         Remember the output of a forward is:
             f(x) = (x * m) + bias
@@ -137,8 +160,12 @@ class HyperNetwork(nn.Module):
         x = torch.mm(x, m) + bias
         return x, (m, bias)
 
-
-    def meta_train(self, datasets: List[Tuple[Tensor, Tensor, int]], epochs: int = 64, accumulation_steps: int = 25):
+    def meta_train(
+        self,
+        datasets: List[Tuple[Tensor, Tensor, int]],
+        epochs: int = 64,
+        accumulation_steps: int = 25,
+    ):
         """
         Meta-Training as explained on the original article (page 12, section HyperFast and Baselines implementation):
         https://arxiv.org/pdf/2402.14335
@@ -149,7 +176,9 @@ class HyperNetwork(nn.Module):
         criterion = torch.nn.CrossEntropyLoss()
         optimizer.zero_grad()
         step = 0
-        for i in tqdm(range(epochs * accumulation_steps), desc="Training the HyperNetwork 💊"):
+        for i in tqdm(
+            range(epochs * accumulation_steps), desc="Training the HyperNetwork 💊"
+        ):
             (x_task, y_task, n_classes) = random.choice(datasets)
             x_task, y_task = x_task.to(device), y_task.to(device)
             main_network = self.forward(x_task, y_task, n_classes)

@@ -11,12 +11,19 @@ from hyperfast.utils.cuda import is_torch_pca
 
 
 class MainNetwork(nn.Module):
-
-    def __init__(self, random_features_net: RandomFeatures, pca: TorchPCA | PCA,
-                 main_network_weights: List[Tuple[Tensor, Tensor]]):
+    def __init__(
+        self,
+        random_features_net: RandomFeatures,
+        pca: TorchPCA | PCA,
+        main_network_weights: List[Tuple[Tensor, Tensor]],
+    ):
         super().__init__()
         self.random_features_net = random_features_net
-        self.pca_mean = (nn.Parameter(pca.mean_) if is_torch_pca() else nn.Parameter(torch.from_numpy(pca.mean_)))
+        self.pca_mean = (
+            nn.Parameter(pca.mean_)
+            if is_torch_pca()
+            else nn.Parameter(torch.from_numpy(pca.mean_))
+        )
         self.input_features, self.output_features = pca.components_.shape
         self.pca_components = nn.Linear(
             self.input_features, self.output_features, bias=False
