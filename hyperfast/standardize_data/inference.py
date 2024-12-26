@@ -1,20 +1,21 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List
 
 import joblib
 import numpy as np
 import pandas as pd
 import torch
 from sklearn.base import TransformerMixin, BaseEstimator
-from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.utils import check_array
 from torch import Tensor
 
 from hyperfast.standardize_data.training import Transformers
 
-class MyTransformer(BaseEstimator, TransformerMixin):
+
+class InferenceTransformer(BaseEstimator, TransformerMixin):
 
     def __init__(self, numerical_feature_ids: np.ndarray, categorical_features: List[int], transformers: Transformers):
         self.numerical_feature_ids = numerical_feature_ids
@@ -34,14 +35,11 @@ class MyTransformer(BaseEstimator, TransformerMixin):
         numerical_feature_ids = self.numerical_feature_ids
         if len(numerical_feature_ids) > 0:
             x_test[:, numerical_feature_ids] = self.transformers.numerical_imputer.transform(
-                x_test[:, numerical_feature_ids]
-            )
+                x_test[:, numerical_feature_ids])
         # Categorical
         cat_features = self.categorical_features
         if len(cat_features) > 0:
-            x_test[:, cat_features] = self.transformers.categorical_imputer.transform(
-                x_test[:, cat_features]
-            )
+            x_test[:, cat_features] = self.transformers.categorical_imputer.transform(x_test[:, cat_features])
             x_test = pd.DataFrame(x_test)
             x_test = self.transformers.one_hot_encoder.transform(x_test)
         return self.transformers.scaler.transform(x_test)
@@ -52,12 +50,10 @@ class InferenceStandardizer:
     pipeline: Pipeline
 
     @staticmethod
-    def from_training_data(numerical_feature_ids: np.ndarray, categorical_features: List[int], transformers: Transformers) -> InferenceStandardizer:
+    def from_training_data(numerical_feature_ids: np.ndarray, categorical_features: List[int],
+                           transformers: Transformers) -> InferenceStandardizer:
         pipeline = Pipeline(
-            steps = [
-                ("transform_data", MyTransformer(numerical_feature_ids, categorical_features, transformers)),
-            ]
-        )
+            steps=[("transform_data", InferenceTransformer(numerical_feature_ids, categorical_features, transformers)), ])
         return InferenceStandardizer(pipeline=pipeline)
 
     @staticmethod
@@ -69,7 +65,6 @@ class InferenceStandardizer:
             raise ValueError("Reshape your data")
         return x
 
-
     def save(self, path: str):
         joblib.dump(self.pipeline, path)
 
@@ -78,10 +73,7 @@ class InferenceStandardizer:
         pipeline = joblib.load(path)
         return InferenceStandardizer(pipeline=pipeline)
 
-    def preprocess_inference_data(
-        self,
-        x_test: np.ndarray | pd.DataFrame,
-    ) -> Tensor:
+    def preprocess_inference_data(self, x_test: np.ndarray | pd.DataFrame, ) -> Tensor:
         x_test = InferenceStandardizer.__assert_correct_input_data(x_test)
         x_test = self.pipeline.transform(x_test)
         x_test = check_array(x_test)
