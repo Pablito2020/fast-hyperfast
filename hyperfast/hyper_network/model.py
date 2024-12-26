@@ -39,7 +39,7 @@ class HyperNetworkGenerator:
         device = get_device()
         for _ in tqdm(range(self.n_ensemble), desc="Generating Main Networks from HyperNetwork... 🧠"):
             _x, _y = _x.to(device), _y.to(device)
-            with torch.no_grad():  # Important! Since we're not testing, we're creating the "final" weights
+            with torch.no_grad():
                 network = self._model(_x, _y, n_classes)
                 networks.append(network)
         inference_standardizer = InferenceStandardizer.from_training_data(

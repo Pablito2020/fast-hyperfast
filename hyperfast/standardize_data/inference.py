@@ -23,14 +23,14 @@ class InferenceTransformer(BaseEstimator, TransformerMixin):
         self.transformers = transformers
 
     def fit(self, x_test, y=None):
+        if len(x_test.shape) == 1:
+            raise ValueError("Reshape your data")
+        return self
+
+    def transform(self, x_test):
         if not isinstance(x_test, (np.ndarray, pd.DataFrame)):
             x_test = check_array(x_test)
         x_test = np.array(x_test).copy()
-        if len(x_test.shape) == 1:
-            raise ValueError("Reshape your data")
-        return x_test
-
-    def transform(self, x_test):
         # Numerical
         numerical_feature_ids = self.numerical_feature_ids
         if len(numerical_feature_ids) > 0:
@@ -57,24 +57,14 @@ class InferenceStandardizer:
         return InferenceStandardizer(pipeline=pipeline)
 
     @staticmethod
-    def __assert_correct_input_data(x: np.ndarray | pd.DataFrame) -> np.ndarray:
-        if not isinstance(x, (np.ndarray, pd.DataFrame)):
-            x = check_array(x)
-        x = np.array(x).copy()
-        if len(x.shape) == 1:
-            raise ValueError("Reshape your data")
-        return x
-
-    def save(self, path: str):
-        joblib.dump(self.pipeline, path)
-
-    @staticmethod
     def from_pre_trained(path: str) -> InferenceStandardizer:
         pipeline = joblib.load(path)
         return InferenceStandardizer(pipeline=pipeline)
 
+    def save(self, path: str):
+        joblib.dump(self.pipeline, path)
+
     def preprocess_inference_data(self, x_test: np.ndarray | pd.DataFrame, ) -> Tensor:
-        x_test = InferenceStandardizer.__assert_correct_input_data(x_test)
-        x_test = self.pipeline.transform(x_test)
+        x_test = self.pipeline.fit_transform(x_test)
         x_test = check_array(x_test)
         return torch.tensor(x_test, dtype=torch.float)
