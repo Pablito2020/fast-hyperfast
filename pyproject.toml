@@ -5,8 +5,11 @@ description = "HyperFast (https://github.com/AI-sandbox/HyperFast) but customiza
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "pandas>=2.2.3",
     "pydantic>=2.10.4",
+    "requests>=2.32.3",
     "scikit-learn==1.5.2",
+    "torch>=2.5.1",
     "tqdm>=4.67.1",
     "xlrd>=2.0.1",
 ]
