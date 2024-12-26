@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import List
+import copy
+from dataclasses import dataclass, field
+from typing import List, Literal
 
+import joblib
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -16,20 +18,20 @@ from hyperfast.standardize_data.training import TrainingDataProcessor
 from hyperfast.utils.cuda import get_device
 
 
-@dataclass(frozen=True)
+@dataclass
 class MainNetworkClassifier:
-    standardizer: InferenceStandardizer
-    networks: List[MainNetwork]
     classes: np.ndarray
     batch_size: int
+    standardizer: InferenceStandardizer
+    networks: List[MainNetwork]
+    device: str = field(default_factory=get_device)
 
     def _predict(self, x) -> np.ndarray:
-        preprocessed_x = self.standardizer.preprocess_inference_data(x)
-        x_dataset = torch.utils.data.TensorDataset(preprocessed_x)
+        x_dataset = torch.utils.data.TensorDataset(x)
         x_loader = torch.utils.data.DataLoader(x_dataset, batch_size=self.batch_size, shuffle=False)
         responses = []
         for x_batch in x_loader:
-            x_ = x_batch[0].to(get_device())
+            x_ = x_batch[0].to(self.device)
             with torch.no_grad():
                 networks_result = []
                 for network in self.networks:
@@ -43,7 +45,8 @@ class MainNetworkClassifier:
         return np.concatenate(responses, axis=0)
 
     def predict(self, x) -> np.ndarray:
-        outputs = self._predict(x)
+        pre_processed_x = self.standardizer.preprocess_inference_data(x)
+        outputs = self._predict(pre_processed_x)
         return self.classes[np.argmax(outputs, axis=1)]
 
     def fine_tune_networks(self, x, y, optimize_steps: int, learning_rate: float = 0.0001):
@@ -60,43 +63,32 @@ class MainNetworkClassifier:
         criterion = nn.CrossEntropyLoss()
         network = self.networks[index]
         optimizer = optim.AdamW(network.parameters(), lr=learning_rate)
-        device = get_device()
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode="min", factor=0.1, patience=10
         )
         for step in tqdm(range(optimize_steps), desc=f"Fine Tunning Network {index + 1} 📖"):
             for inputs, targets in dataloader:
-                inputs, targets = inputs.to(device), targets.to(device)
+                inputs, targets = inputs.to(self.device), targets.to(self.device)
                 optimizer.zero_grad()
                 outputs = network(inputs, targets)
                 loss = criterion(outputs, targets)
                 loss.backward()
                 optimizer.step()
                 print(f"[Fine Tune (Network {index + 1})] Step: [{step + 1}/{optimize_steps}], Loss: {loss.item()}")
+            scheduler.step(metrics=loss.item())
 
-            if scheduler is not None:
-                if isinstance(scheduler, optim.lr_scheduler.ReduceLROnPlateau):
-                    scheduler.step(loss.item())
-                else:
-                    scheduler.step()
-
-    def save_model(self, path: str):
-        self.standardizer.save(f"{path}/standardizer.pkl")
-        torch.save(self.networks, f"{path}/main_networks.pth")
-        np.save(f'{path}/classes.npy', self.classes)
-        print(f"Current batch size is: {self.batch_size}")
+    def save_model(self, path: str, device: Literal["cuda", "cpu"]):
+        # NOTE: This could be improved with python3.13.1, since the copy module has the "replace" function
+        # This will allows us to re-enable frozen=True on the dataclass
+        # https://docs.python.org/3/library/copy.html#copy.replace
+        classifier = copy.deepcopy(self)
+        new_networks = [net.cpu() if device == "cpu" else net.cuda() for net in classifier.networks]
+        classifier.device = device
+        classifier.networks = new_networks
+        joblib.dump(classifier, path)
 
     @staticmethod
-    def load_from_pre_trained(path: str, batch_size: int) -> MainNetworkClassifier:
-        device = get_device()
-        inference_standardizer = InferenceStandardizer.from_pre_trained(f"{path}/standardizer.pkl")
-        print(f"Loading Main Model on device: {device}... ⏰", flush=True)
-        networks = torch.load(f"{path}/main_networks.pth", map_location=torch.device(device))
-        classes = np.load(f'{path}/classes.npy')
-        print(f"Loaded Main Model on device: {device} successfully! 🚀", flush=True)
-        return MainNetworkClassifier(
-            standardizer=inference_standardizer,
-            networks=networks,
-            classes=classes,
-            batch_size=batch_size
-        )
+    def load_from_pre_trained(path: str) -> MainNetworkClassifier:
+        classifier = joblib.load(path)
+        print(f"Loaded classifier. The model is for device: {classifier.device}")
+        return classifier
