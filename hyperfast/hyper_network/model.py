@@ -26,7 +26,7 @@ class HyperNetworkGenerator:
     def generate_classifier_for_dataset(self, x: np.ndarray | pd.DataFrame,
                                         y: np.ndarray | pd.Series) -> MainNetworkClassifier:
         """
-        Generates a main model for the given data.
+        Generates a Main Network for the given data.
 
         Args:
             x (array-like): Input features.
@@ -42,8 +42,13 @@ class HyperNetworkGenerator:
             with torch.no_grad():  # Important! Since we're not testing, we're creating the "final" weights
                 network = self._model(_x, _y, n_classes)
                 networks.append(network)
+        inference_standardizer = InferenceStandardizer.from_training_data(
+            numerical_feature_ids = processed_data.misc.numerical_feature_ids,
+            categorical_features=processed_data.misc.categorical_features,
+            transformers = processed_data.misc.transformers
+        )
         return MainNetworkClassifier(networks=networks, classes=processed_data.misc.classes,
-            standardizer=InferenceStandardizer(data=processed_data), batch_size=self.processor.config.batch_size)
+            standardizer=inference_standardizer, batch_size=self.processor.config.batch_size)
 
     @staticmethod
     def load_from_pre_trained(

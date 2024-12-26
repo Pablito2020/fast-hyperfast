@@ -44,6 +44,7 @@ print(f"Accuracy: {accuracy * 100:.2f}%")
 
 print(f"Fine tune...")
 classifier.fine_tune_networks(x=X_train, y=y_train, optimize_steps=64)
+
 print(f"Saving the model")
 classifier.save_model(path=".")
 predictions = classifier.predict(X_test)
@@ -51,7 +52,7 @@ accuracy = accuracy_score(y_test, predictions)
 print(f"Accuracy: {accuracy * 100:.2f}%")
 
 # An example of loading a model and predicting directly
-# classifier = MainNetworkClassifier.load_from_pre_trained(X_train, y_train, batch_size=2048, path="./models/original_ds_finetunned")
+# classifier = MainNetworkClassifier.load_from_pre_trained(batch_size=2048, path=".")
 # predictions = classifier.predict(X_test)
 # accuracy = accuracy_score(y_test, predictions)
 # print(f"Accuracy: {accuracy * 100:.2f}%")

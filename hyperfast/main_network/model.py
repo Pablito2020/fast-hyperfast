@@ -81,16 +81,15 @@ class MainNetworkClassifier:
                     scheduler.step()
 
     def save_model(self, path: str):
+        self.standardizer.save(f"{path}/standardizer.pkl")
         torch.save(self.networks, f"{path}/main_networks.pth")
         np.save(f'{path}/classes.npy', self.classes)
         print(f"Current batch size is: {self.batch_size}")
 
     @staticmethod
-    def load_from_pre_trained(x, y, path: str, batch_size: int) -> MainNetworkClassifier:
-        t = TrainingDataProcessor()
+    def load_from_pre_trained(path: str, batch_size: int) -> MainNetworkClassifier:
         device = get_device()
-        res = t.sample(x, y)
-        inference_standardizer = InferenceStandardizer(data=res)
+        inference_standardizer = InferenceStandardizer.from_pre_trained(f"{path}/standardizer.pkl")
         print(f"Loading Main Model on device: {device}... ⏰", flush=True)
         networks = torch.load(f"{path}/main_networks.pth", map_location=torch.device(device))
         classes = np.load(f'{path}/classes.npy')
