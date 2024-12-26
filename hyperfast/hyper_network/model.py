@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import List, Tuple
+
 import numpy as np
 import pandas as pd
 import torch
@@ -69,3 +71,13 @@ class HyperNetworkGenerator:
             network=network,
             n_ensemble=n_ensemble
         )
+
+    def meta_train(self, datasets: List[Tuple[np.ndarray | pd.DataFrame, np.ndarray | pd.DataFrame]]):
+        print(f"Beginning meta-training on hyper network....")
+        meta_training_datasets = []
+        for (x, y) in datasets:
+            processed_data = self.processor.sample(x, y)
+            _x, _y = processed_data.data
+            n_classes = len(processed_data.misc.classes)
+            meta_training_datasets.append((_x, _y, n_classes))
+        self._model.meta_train(datasets=meta_training_datasets, epochs=3)

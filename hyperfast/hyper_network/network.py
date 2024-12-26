@@ -1,9 +1,11 @@
-from typing import Tuple
+import random
+from typing import Tuple, List
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
+from tqdm import tqdm
 
 from hyperfast.hyper_network.configuration import HyperNetworkConfig, DEFAULT_CLIP_DATA_VALUE
 from hyperfast.hyper_network.embedding import RandomFeatures, get_pca, get_mean_per_class
@@ -134,6 +136,30 @@ class HyperNetwork(nn.Module):
         bias = weights[-1, :]
         x = torch.mm(x, m) + bias
         return x, (m, bias)
+
+
+    def meta_train(self, datasets: List[Tuple[Tensor, Tensor, int]], epochs: int = 64, accumulation_steps: int = 25):
+        """
+        Meta-Training as explained on the original article (page 12, section HyperFast and Baselines implementation):
+        https://arxiv.org/pdf/2402.14335
+        """
+        self.train()
+        device = get_device()
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
+        criterion = torch.nn.CrossEntropyLoss()
+        optimizer.zero_grad()
+        step = 0
+        for i in tqdm(range(epochs * accumulation_steps), desc="Training the HyperNetwork 💊"):
+            (x_task, y_task, n_classes) = random.choice(datasets)
+            x_task, y_task = x_task.to(device), y_task.to(device)
+            main_network = self.forward(x_task, y_task, n_classes)
+            main_network.to(device)
+            predictions = main_network(x_task)
+            loss = criterion(predictions, y_task) / accumulation_steps
+            loss.backward()
+            if (step + 1) % accumulation_steps == 0:
+                optimizer.step()
+                optimizer.zero_grad()
 
     @property
     def config(self) -> HyperNetworkConfig:
