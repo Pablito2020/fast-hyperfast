@@ -1,6 +1,6 @@
 [project]
 name = "fast_hyperfast"
-version = "1.0.1"
+version = "1.0.2"
 description = "HyperFast (https://github.com/AI-sandbox/HyperFast) but customizable (and in some cases faster too!)"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -16,6 +16,13 @@ dependencies = [
 
 [dependency-groups]
 dev = ["jupyter", "notebook", "pip"]
+
+[build-system]
+requires = ["hatchling>=1.26.1"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["hyperfast"]
 
 [tool.setuptools.packages.find]
 where = ["."] 
