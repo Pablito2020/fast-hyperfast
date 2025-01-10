@@ -95,15 +95,14 @@ class MainNetworkClassifier:
                 )
             scheduler.step(metrics=loss.item())
 
-    def save_model(self, path: str, device: Literal["cuda", "cpu"]):
+    def save_model(self, path: str):
         # NOTE: This could be improved with python3.13.1, since the copy module has the "replace" function
         # This will allows us to re-enable frozen=True on the dataclass
         # https://docs.python.org/3/library/copy.html#copy.replace
         classifier = copy.deepcopy(self)
         new_networks = [
-            net.cpu() if device == "cpu" else net.cuda() for net in classifier.networks
+            net.cpu() if self.device == "cpu" else net.cuda() for net in classifier.networks
         ]
-        classifier.device = device
         classifier.networks = new_networks
         joblib.dump(classifier, path)
 
