@@ -1,6 +1,6 @@
 [project]
 name = "fast_hyperfast"
-version = "1.0.2"
+version = "1.0.3"
 description = "HyperFast (https://github.com/AI-sandbox/HyperFast) but customizable (and in some cases faster too!)"
 readme = "README.md"
 requires-python = ">=3.10"

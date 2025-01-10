@@ -61,7 +61,7 @@ class ProcessorTrainingDataResult(BaseModel):
         arbitrary_types_allowed = True
 
 
-type Data = np.ndarray | pd.DataFrame
+Data = np.ndarray | pd.DataFrame
 
 
 @dataclass
