@@ -14,6 +14,9 @@ dependencies = [
     "xlrd>=2.0.1",
 ]
 
+[dependency-groups]
+dev = ["jupyter", "notebook", "pip"]
+
 [tool.setuptools.packages.find]
 where = ["."] 
 include = ["hyperfast.hyper_network", "hyperfast.main_network", "hyperfast.standardize_data", "hyperfast.utils"]
